@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 import TickerBar from '@/components/TickerBar'
-import { getModelColor, getChartColor, getChartDash } from '@/components/constants'
+import { getModelColor, getChartColor } from '@/components/constants'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
   CartesianGrid, ReferenceLine, Area, ComposedChart
@@ -37,6 +37,18 @@ interface Trade {
 interface Run {
   id: string; competition_id: string; status: string; current_candle_index: number;
   total_candles: number; started_at: string; completed_at: string | null
+}
+
+const MODEL_EMOJIS: Record<string, string> = {
+  openai: '🟢',
+  anthropic: '🔵',
+  google: '🔴',
+  xai: '🟣',
+  deepseek: '🔮',
+  meta: '🟠',
+  mistral: '🌊',
+  alibaba: '💮',
+  custom: '🤖',
 }
 
 // ─── Main Component ───────────────────────────────────────────────
@@ -295,21 +307,24 @@ export default function DemoPage() {
           <div className="flex gap-4">
             {/* Chart area */}
             <div className="flex-1 min-w-0">
-              <div className="bg-[#111118] rounded-lg border border-gray-800 p-4">
-                {/* Controls */}
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold">Equity Performance</h2>
-                  <div className="flex gap-2">
+              <div className="bg-[#0d0d14] rounded-lg border border-gray-800/50 p-6">
+                {/* Header row like nof1.ai */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
                     {(['$', '%'] as const).map(m => (
                       <button key={m} onClick={() => setChartMode(m)}
-                        className={`px-3 py-1 text-xs rounded font-medium ${chartMode === m ? 'bg-[#10b981]/20 text-[#10b981]' : 'text-gray-400 hover:text-white'}`}>
-                        {m === '$' ? 'USD' : 'Return %'}
+                        className={`w-8 h-8 text-sm font-bold rounded ${chartMode === m ? 'bg-[#10b981] text-black' : 'bg-[#1a1a24] text-gray-400 hover:text-white'}`}>
+                        {m}
                       </button>
                     ))}
-                    <div className="w-px bg-gray-700 mx-1" />
+                  </div>
+                  <h2 className="text-sm font-mono font-bold tracking-wider text-gray-300 uppercase">
+                    {chartMode === '$' ? 'Total Account Value' : 'Return %'}
+                  </h2>
+                  <div className="flex items-center gap-2">
                     {(['ALL', '72H'] as const).map(t => (
                       <button key={t} onClick={() => setTimeframe(t)}
-                        className={`px-3 py-1 text-xs rounded font-medium ${timeframe === t ? 'bg-[#06b6d4]/20 text-[#06b6d4]' : 'text-gray-400 hover:text-white'}`}>
+                        className={`px-3 py-1.5 text-xs font-bold rounded ${timeframe === t ? 'bg-[#1a1a24] text-white border border-gray-600' : 'text-gray-500 hover:text-white'}`}>
                         {t}
                       </button>
                     ))}
@@ -317,124 +332,179 @@ export default function DemoPage() {
                 </div>
 
                 {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={420}>
-                    <LineChart
-                      data={chartData}
-                      margin={{ top: 5, right: 120, bottom: 5, left: 10 }}
-                      onClick={(e: any) => {
-                        if (!e?.activePayload?.length || !e?.chartY) return
-                        const items = e.activePayload.filter((p: any) => p.dataKey !== 'candle')
-                        if (!items.length) return
-                        const allVals = items.map((p: any) => p.value ?? 0)
-                        const minVal = Math.min(...allVals)
-                        const maxVal = Math.max(...allVals)
-                        const chartHeight = 410
-                        const ratio = Math.max(0, Math.min(1, (e.chartY - 5) / chartHeight))
-                        const targetVal = maxVal - ratio * (maxVal - minVal)
-                        let closest = items[0]
-                        let closestDist = Infinity
-                        items.forEach((item: any) => {
-                          const dist = Math.abs((item.value ?? 0) - targetVal)
-                          if (dist < closestDist) { closestDist = dist; closest = item }
-                        })
-                        const mid = closest.dataKey as string
-                        setFocusedChartModel(prev => prev === mid ? null : mid)
-                      }}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a24" />
-                      <XAxis dataKey="candle" stroke="#555" tick={{ fontSize: 10 }} />
-                      <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => chartMode === '%' ? `${v.toFixed(1)}%` : `$${v.toLocaleString()}`} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
-                        labelFormatter={v => `Candle ${v}`}
-                        content={({ active, payload, label, coordinate }: any) => {
-                          if (!active || !payload?.length) return null
-                          const items = focusedChartModel
-                            ? payload.filter((p: any) => p.dataKey === focusedChartModel)
-                            : payload
-                          if (!items.length) return null
-
-                          let show: any[]
-                          if (focusedChartModel) {
-                            show = items
-                          } else {
-                            // Find closest line to mouse Y using chart coordinate
-                            const mouseY = coordinate?.y
-                            if (mouseY != null) {
-                              // Each payload item has a value; we need to find whose rendered Y is closest
-                              // Recharts doesn't expose pixel Y per item, so we approximate:
-                              // pick the item whose value is closest to the value at mouseY
-                              // We can get the Y-axis domain from all values
-                              const allVals = items.map((p: any) => p.value ?? 0)
-                              const minVal = Math.min(...allVals)
-                              const maxVal = Math.max(...allVals)
-                              // Chart area is ~420px, top=5 bottom=5 so usable ~410
-                              // mouseY is relative to chart area; top = maxVal, bottom = minVal
-                              const chartHeight = 410
-                              const ratio = Math.max(0, Math.min(1, (mouseY - 5) / chartHeight))
-                              const targetVal = maxVal - ratio * (maxVal - minVal)
-                              // Find closest
-                              let closest = items[0]
-                              let closestDist = Infinity
-                              items.forEach((item: any) => {
-                                const dist = Math.abs((item.value ?? 0) - targetVal)
-                                if (dist < closestDist) { closestDist = dist; closest = item }
-                              })
-                              show = [closest]
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={480}>
+                      <LineChart
+                        data={chartData}
+                        margin={{ top: 10, right: 160, bottom: 20, left: 60 }}
+                        onClick={(e: any) => {
+                          if (!e?.activePayload?.length || !e?.chartY) return
+                          const items = e.activePayload.filter((p: any) => p.dataKey !== 'candle')
+                          if (!items.length) return
+                          const allVals = items.map((p: any) => p.value ?? 0)
+                          const minVal = Math.min(...allVals)
+                          const maxVal = Math.max(...allVals)
+                          const chartHeight = 460
+                          const ratio = Math.max(0, Math.min(1, (e.chartY - 10) / chartHeight))
+                          const targetVal = maxVal - ratio * (maxVal - minVal)
+                          let closest = items[0]
+                          let closestDist = Infinity
+                          items.forEach((item: any) => {
+                            const dist = Math.abs((item.value ?? 0) - targetVal)
+                            if (dist < closestDist) { closestDist = dist; closest = item }
+                          })
+                          const mid = closest.dataKey as string
+                          setFocusedChartModel(prev => prev === mid ? null : mid)
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <CartesianGrid vertical={true} horizontal={false} stroke="#1a1a24" />
+                        <XAxis
+                          dataKey="candle"
+                          stroke="#333"
+                          tick={{ fontSize: 11, fill: '#666' }}
+                          axisLine={{ stroke: '#333' }}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          stroke="#333"
+                          tick={{ fontSize: 11, fill: '#666', fontFamily: 'monospace' }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={v => chartMode === '%' ? `${v.toFixed(1)}%` : `$${v.toLocaleString()}`}
+                        />
+                        <Tooltip
+                          content={({ active, payload, label, coordinate }: any) => {
+                            if (!active || !payload?.length) return null
+                            const items = focusedChartModel
+                              ? payload.filter((p: any) => p.dataKey === focusedChartModel)
+                              : payload
+                            if (!items.length) return null
+                            let show: any[]
+                            if (focusedChartModel) {
+                              show = items
                             } else {
-                              show = [items[0]]
+                              const mouseY = coordinate?.y
+                              if (mouseY != null) {
+                                const allVals = items.map((p: any) => p.value ?? 0)
+                                const minVal = Math.min(...allVals)
+                                const maxVal = Math.max(...allVals)
+                                const ratio = Math.max(0, Math.min(1, (mouseY - 10) / 460))
+                                const targetVal = maxVal - ratio * (maxVal - minVal)
+                                let closest = items[0]
+                                let closestDist = Infinity
+                                items.forEach((item: any) => {
+                                  const dist = Math.abs((item.value ?? 0) - targetVal)
+                                  if (dist < closestDist) { closestDist = dist; closest = item }
+                                })
+                                show = [closest]
+                              } else {
+                                show = [items[0]]
+                              }
                             }
-                          }
+                            return (
+                              <div style={{ backgroundColor: '#111118ee', border: '1px solid #333', borderRadius: 6, padding: '6px 10px', fontSize: 12, fontFamily: 'monospace' }}>
+                                <div style={{ color: '#666', marginBottom: 2, fontSize: 10 }}>Candle {label}</div>
+                                {show.map((item: any) => {
+                                  const mod = modelMap[item.dataKey]
+                                  const v = item.value ?? 0
+                                  return (
+                                    <div key={item.dataKey} style={{ color: item.stroke, fontWeight: 700 }}>
+                                      {mod?.display_name || item.dataKey}: {chartMode === '%' ? `${v.toFixed(2)}%` : fmtUsd(v)}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )
+                          }}
+                        />
+                        {chartMode === '%' && <ReferenceLine y={0} stroke="#444" strokeDasharray="3 3" />}
+                        {chartModelIds
+                          .filter(mid => !focusedChartModel || focusedChartModel === mid)
+                          .map((mid, idx) => {
+                            // Use stable index from full list for consistent colors
+                            const stableIdx = chartModelIds.indexOf(mid)
+                            return (
+                              <Line
+                                key={mid}
+                                type="monotone"
+                                dataKey={mid}
+                                stroke={getChartColor(stableIdx)}
+                                dot={false}
+                                activeDot={false}
+                                strokeWidth={focusedChartModel ? 2.5 : 1.8}
+                                name={mid}
+                              />
+                            )
+                          })}
+                      </LineChart>
+                    </ResponsiveContainer>
 
+                    {/* Model labels at end of lines (like nof1.ai) */}
+                    <div className="absolute right-0 top-[10px] w-[150px]" style={{ height: 460 }}>
+                      {(() => {
+                        const visibleModels = chartModelIds.filter(mid => !focusedChartModel || focusedChartModel === mid)
+                        const lastCandle = chartData[chartData.length - 1]
+                        if (!lastCandle) return null
+                        // Get values and sort for positioning
+                        const modelVals = visibleModels.map((mid, _) => ({
+                          mid,
+                          val: (lastCandle as any)[mid] as number | undefined,
+                          stableIdx: chartModelIds.indexOf(mid)
+                        })).filter(m => m.val != null).sort((a, b) => (b.val!) - (a.val!))
+                        
+                        if (!modelVals.length) return null
+                        const maxVal = Math.max(...modelVals.map(m => m.val!))
+                        const minVal = Math.min(...modelVals.map(m => m.val!))
+                        const range = maxVal - minVal || 1
+
+                        // Space labels to avoid overlap (min 28px apart)
+                        const positions = modelVals.map(m => ({
+                          ...m,
+                          naturalY: ((maxVal - m.val!) / range) * (460 - 40) + 10
+                        }))
+                        // Resolve overlaps
+                        for (let i = 1; i < positions.length; i++) {
+                          if (positions[i].naturalY - positions[i-1].naturalY < 28) {
+                            positions[i].naturalY = positions[i-1].naturalY + 28
+                          }
+                        }
+
+                        return positions.map(({ mid, val, stableIdx, naturalY }) => {
+                          const mod = modelMap[mid]
+                          const emoji = MODEL_EMOJIS[mod?.provider || ''] || '🤖'
                           return (
-                            <div style={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
-                              <div style={{ color: '#999', marginBottom: 4 }}>Candle {label}</div>
-                              {show.map((item: any) => {
-                                const mod = modelMap[item.dataKey]
-                                const v = item.value ?? 0
-                                return (
-                                  <div key={item.dataKey} style={{ color: item.stroke, fontWeight: 600 }}>
-                                    {mod?.display_name || item.dataKey}: {chartMode === '%' ? `${v.toFixed(2)}%` : fmtUsd(v)}
-                                  </div>
-                                )
-                              })}
-                              {!focusedChartModel && <div style={{ color: '#555', fontSize: 10, marginTop: 4 }}>Click to isolate</div>}
+                            <div
+                              key={mid}
+                              className="absolute flex items-center gap-1 cursor-pointer hover:opacity-80"
+                              style={{ top: naturalY, right: 0, transform: 'translateY(-50%)' }}
+                              onClick={() => setFocusedChartModel(prev => prev === mid ? null : mid)}
+                            >
+                              <span className="text-base">{emoji}</span>
+                              <span
+                                className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded"
+                                style={{ backgroundColor: getChartColor(stableIdx) + '33', color: getChartColor(stableIdx) }}
+                              >
+                                {chartMode === '%' ? `${(val!).toFixed(1)}%` : `$${val!.toLocaleString()}`}
+                              </span>
                             </div>
                           )
-                        }}
-                      />
-                      {chartMode === '%' && <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />}
-                      {chartModelIds
-                        .filter(mid => !focusedChartModel || focusedChartModel === mid)
-                        .map((mid, idx) => (
-                        <Line
-                          key={mid}
-                          type="monotone"
-                          dataKey={mid}
-                          stroke={getChartColor(idx)}
-                          strokeDasharray={getChartDash(idx)}
-                          dot={false}
-                          activeDot={false}
-                          strokeWidth={focusedChartModel ? 3 : 1.5}
-                          name={mid}
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
+                        })
+                      })()}
+                    </div>
+                  </div>
                 ) : (
-                  <div className="h-[420px] flex items-center justify-center text-gray-500">No equity data yet</div>
+                  <div className="h-[480px] flex items-center justify-center text-gray-500 font-mono">No equity data yet</div>
                 )}
 
-                {/* Legend */}
-                <div className="flex flex-wrap gap-3 mt-3 items-center">
+                {/* Legend row */}
+                <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-800/50 items-center">
                   {focusedChartModel && (
                     <button
                       onClick={() => setFocusedChartModel(null)}
-                      className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-[#10b981]/20 text-[#10b981] hover:bg-[#10b981]/30 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-white/10 text-white hover:bg-white/20 transition-colors font-medium"
                     >
-                      Show All
-                      <X className="w-3 h-3" />
+                      ← Show All
                     </button>
                   )}
                   {chartModelIds.map((mid, idx) => {
@@ -447,15 +517,15 @@ export default function DemoPage() {
                       <button
                         key={mid}
                         onClick={() => setFocusedChartModel(isFocused ? null : mid)}
-                        className={`flex items-center gap-1.5 text-xs cursor-pointer rounded px-1.5 py-0.5 transition-all ${
-                          isFocused ? 'bg-white/10 ring-1 ring-white/20' : isDimmed ? 'opacity-30' : 'hover:bg-white/5'
+                        className={`flex items-center gap-1.5 text-xs cursor-pointer transition-all ${
+                          isFocused ? 'opacity-100' : isDimmed ? 'opacity-20' : 'opacity-80 hover:opacity-100'
                         }`}
                       >
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getChartColor(idx) }} />
-                        <span className="text-gray-300">{mod?.display_name || mid}</span>
+                        <div className="w-3 h-1 rounded-full" style={{ backgroundColor: getChartColor(idx) }} />
+                        <span className="text-gray-300 font-medium">{mod?.display_name || mid}</span>
                         {val !== null && (
-                          <span className="font-mono text-gray-400">
-                            {chartMode === '%' ? `${val.toFixed(2)}%` : fmtUsd(val)}
+                          <span className="font-mono text-gray-500" style={{ fontSize: 10 }}>
+                            {chartMode === '%' ? `${val.toFixed(1)}%` : fmtUsd(val)}
                           </span>
                         )}
                       </button>
