@@ -333,15 +333,16 @@ export default function DemoPage() {
                         }}
                       />
                       {chartMode === '%' && <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />}
-                      {chartModelIds.map(mid => (
+                      {chartModelIds
+                        .filter(mid => !focusedChartModel || focusedChartModel === mid)
+                        .map(mid => (
                         <Line
                           key={mid}
                           type="monotone"
                           dataKey={mid}
                           stroke={getModelColor(modelMap[mid]?.provider || 'custom')}
                           dot={false}
-                          strokeWidth={focusedChartModel === mid ? 3 : focusedChartModel ? 1 : 2}
-                          strokeOpacity={focusedChartModel && focusedChartModel !== mid ? 0.1 : 1}
+                          strokeWidth={focusedChartModel ? 3 : 2}
                           name={mid}
                         />
                       ))}
