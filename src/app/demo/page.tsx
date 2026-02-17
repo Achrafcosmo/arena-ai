@@ -64,6 +64,9 @@ export default function DemoPage() {
   // Models section modal
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
 
+  // Chart: click-to-isolate a single model
+  const [focusedChartModel, setFocusedChartModel] = useState<string | null>(null)
+
   // ─── Data fetching ──────────────────────────────────────────────
   const fetchAll = useCallback(async (compId: string) => {
     // models for this competition
@@ -337,7 +340,8 @@ export default function DemoPage() {
                           dataKey={mid}
                           stroke={getModelColor(modelMap[mid]?.provider || 'custom')}
                           dot={false}
-                          strokeWidth={2}
+                          strokeWidth={focusedChartModel === mid ? 3 : focusedChartModel ? 1 : 2}
+                          strokeOpacity={focusedChartModel && focusedChartModel !== mid ? 0.1 : 1}
                           name={mid}
                         />
                       ))}
@@ -348,13 +352,30 @@ export default function DemoPage() {
                 )}
 
                 {/* Legend */}
-                <div className="flex flex-wrap gap-3 mt-3">
+                <div className="flex flex-wrap gap-3 mt-3 items-center">
+                  {focusedChartModel && (
+                    <button
+                      onClick={() => setFocusedChartModel(null)}
+                      className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-[#10b981]/20 text-[#10b981] hover:bg-[#10b981]/30 transition-colors"
+                    >
+                      Show All
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                   {chartModelIds.map(mid => {
                     const mod = modelMap[mid]
                     const lastSnap = equitySnaps.filter(s => s.model_id === mid).slice(-1)[0]
                     const val = lastSnap ? (chartMode === '%' ? ((lastSnap.equity / initialBalance) - 1) * 100 : lastSnap.equity) : null
+                    const isFocused = focusedChartModel === mid
+                    const isDimmed = focusedChartModel && !isFocused
                     return (
-                      <div key={mid} className="flex items-center gap-1.5 text-xs">
+                      <button
+                        key={mid}
+                        onClick={() => setFocusedChartModel(isFocused ? null : mid)}
+                        className={`flex items-center gap-1.5 text-xs cursor-pointer rounded px-1.5 py-0.5 transition-all ${
+                          isFocused ? 'bg-white/10 ring-1 ring-white/20' : isDimmed ? 'opacity-30' : 'hover:bg-white/5'
+                        }`}
+                      >
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getModelColor(mod?.provider || 'custom') }} />
                         <span className="text-gray-300">{mod?.display_name || mid}</span>
                         {val !== null && (
@@ -362,7 +383,7 @@ export default function DemoPage() {
                             {chartMode === '%' ? `${val.toFixed(2)}%` : fmtUsd(val)}
                           </span>
                         )}
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
