@@ -375,9 +375,9 @@ export default function DemoPage() {
                           stroke={getChartColor(idx)}
                           strokeDasharray={getChartDash(idx)}
                           dot={false}
+                          activeDot={false}
                           strokeWidth={focusedChartModel ? 3 : 1.5}
                           name={mid}
-                          activeDot={{ r: 5, cursor: 'pointer', onClick: () => setFocusedChartModel(prev => prev === mid ? null : mid) }}
                         />
                       ))}
                     </LineChart>
