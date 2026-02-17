@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 import TickerBar from '@/components/TickerBar'
-import { getModelColor } from '@/components/constants'
+import { getModelColor, getChartColor, getChartDash } from '@/components/constants'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
   CartesianGrid, ReferenceLine, Area, ComposedChart
@@ -337,26 +337,45 @@ export default function DemoPage() {
                       <Tooltip
                         contentStyle={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
                         labelFormatter={v => `Candle ${v}`}
-                        formatter={(value: number | undefined, name: string | undefined) => {
-                          if (focusedChartModel && name !== focusedChartModel) return [null, null]
-                          const mod = modelMap[name || '']
-                          const label = mod?.display_name || name || ''
-                          const v = value ?? 0
-                          return [chartMode === '%' ? `${v.toFixed(2)}%` : fmtUsd(v), label]
+                        content={({ active, payload, label }: any) => {
+                          if (!active || !payload?.length) return null
+                          // Find the model closest to cursor (highest value as proxy, or just pick first if focused)
+                          const items = focusedChartModel
+                            ? payload.filter((p: any) => p.dataKey === focusedChartModel)
+                            : payload
+                          if (!items.length) return null
+                          // Sort by value desc and show only top 1 when not focused (nearest line)
+                          const sorted = [...items].sort((a: any, b: any) => (b.value || 0) - (a.value || 0))
+                          const show = focusedChartModel ? sorted : [sorted[0]]
+                          return (
+                            <div style={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
+                              <div style={{ color: '#999', marginBottom: 4 }}>Candle {label}</div>
+                              {show.map((item: any) => {
+                                const mod = modelMap[item.dataKey]
+                                const v = item.value ?? 0
+                                return (
+                                  <div key={item.dataKey} style={{ color: item.stroke, fontWeight: 600 }}>
+                                    {mod?.display_name || item.dataKey}: {chartMode === '%' ? `${v.toFixed(2)}%` : fmtUsd(v)}
+                                  </div>
+                                )
+                              })}
+                              {!focusedChartModel && <div style={{ color: '#555', fontSize: 10, marginTop: 4 }}>Click to isolate</div>}
+                            </div>
+                          )
                         }}
-                        itemSorter={(item: any) => -(item.value || 0)}
                       />
                       {chartMode === '%' && <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />}
                       {chartModelIds
                         .filter(mid => !focusedChartModel || focusedChartModel === mid)
-                        .map(mid => (
+                        .map((mid, idx) => (
                         <Line
                           key={mid}
                           type="monotone"
                           dataKey={mid}
-                          stroke={getModelColor(modelMap[mid]?.provider || 'custom')}
+                          stroke={getChartColor(idx)}
+                          strokeDasharray={getChartDash(idx)}
                           dot={false}
-                          strokeWidth={focusedChartModel ? 3 : 2}
+                          strokeWidth={focusedChartModel ? 3 : 1.5}
                           name={mid}
                           activeDot={{ r: 5, cursor: 'pointer', onClick: () => setFocusedChartModel(prev => prev === mid ? null : mid) }}
                         />
@@ -378,7 +397,7 @@ export default function DemoPage() {
                       <X className="w-3 h-3" />
                     </button>
                   )}
-                  {chartModelIds.map(mid => {
+                  {chartModelIds.map((mid, idx) => {
                     const mod = modelMap[mid]
                     const lastSnap = equitySnaps.filter(s => s.model_id === mid).slice(-1)[0]
                     const val = lastSnap ? (chartMode === '%' ? ((lastSnap.equity / initialBalance) - 1) * 100 : lastSnap.equity) : null
@@ -392,7 +411,7 @@ export default function DemoPage() {
                           isFocused ? 'bg-white/10 ring-1 ring-white/20' : isDimmed ? 'opacity-30' : 'hover:bg-white/5'
                         }`}
                       >
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getModelColor(mod?.provider || 'custom') }} />
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getChartColor(idx) }} />
                         <span className="text-gray-300">{mod?.display_name || mid}</span>
                         {val !== null && (
                           <span className="font-mono text-gray-400">
