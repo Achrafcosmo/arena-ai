@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2 } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface Model {
   id: string
@@ -31,7 +31,7 @@ export default function ModelsPage() {
 
   const fetchModels = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('arena_models')
         .select('*')
         .order('created_at', { ascending: false })
@@ -47,7 +47,7 @@ export default function ModelsPage() {
 
   const toggleModel = async (modelId: string, enabled: boolean) => {
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('arena_models')
         .update({ enabled })
         .eq('id', modelId)
@@ -63,7 +63,7 @@ export default function ModelsPage() {
     if (!confirm('Are you sure you want to delete this model?')) return
     
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('arena_models')
         .delete()
         .eq('id', modelId)
@@ -207,7 +207,7 @@ function ModelForm({ model, onClose, onSave }: {
     try {
       if (model) {
         // Update existing model
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('arena_models')
           .update(formData)
           .eq('id', model.id)
@@ -215,7 +215,7 @@ function ModelForm({ model, onClose, onSave }: {
         if (error) throw error
       } else {
         // Create new model
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('arena_models')
           .insert([formData])
         

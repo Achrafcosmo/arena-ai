@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { ModelProvider } from './providers'
 import { fetchCandles, CandleData } from './market-data'
 import { calculateMetrics } from './metrics'
@@ -72,7 +72,7 @@ export class SimulationEngine {
     })
 
     // Update run with total candles
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('arena_runs')
       .update({ 
         total_candles: this.candles.length,
@@ -116,7 +116,7 @@ export class SimulationEngine {
         console.error(`Error processing model ${model.id}:`, error)
         
         // Log error
-        await supabaseAdmin.from('arena_logs').insert({
+        await getSupabaseAdmin().from('arena_logs').insert({
           run_id: this.runId,
           model_id: model.id,
           level: 'error',
@@ -129,7 +129,7 @@ export class SimulationEngine {
     await Promise.all(promises)
     
     // Update run progress
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('arena_runs')
       .update({ current_candle_index: candleIndex })
       .eq('id', this.runId)
@@ -314,7 +314,7 @@ export class SimulationEngine {
     
     const state = this.modelStates.get(modelId)!
     
-    await supabaseAdmin.from('arena_trades').insert({
+    await getSupabaseAdmin().from('arena_trades').insert({
       run_id: this.runId,
       model_id: modelId,
       candle_index: candleIndex,
@@ -332,7 +332,7 @@ export class SimulationEngine {
   private async recordEquitySnapshot(modelId: string, candleIndex: number): Promise<void> {
     const state = this.modelStates.get(modelId)!
     
-    await supabaseAdmin.from('arena_equity_snapshots').insert({
+    await getSupabaseAdmin().from('arena_equity_snapshots').insert({
       run_id: this.runId,
       model_id: modelId,
       candle_index: candleIndex,
@@ -363,7 +363,7 @@ export class SimulationEngine {
 
     // Upsert all model states
     for (const update of updates) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('arena_model_run_state')
         .upsert(update, { 
           onConflict: 'run_id,model_id'
@@ -372,7 +372,7 @@ export class SimulationEngine {
   }
 
   async complete(): Promise<void> {
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('arena_runs')
       .update({ 
         status: 'completed',

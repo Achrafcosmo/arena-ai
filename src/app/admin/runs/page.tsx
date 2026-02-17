@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Play, Square, RotateCcw, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface Run {
   id: string
@@ -40,7 +40,7 @@ export default function RunsPage() {
 
   const fetchRuns = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('arena_runs')
         .select(`
           *,
@@ -59,7 +59,7 @@ export default function RunsPage() {
 
   const fetchCompetitions = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('arena_competitions')
         .select('id, name, status')
         .in('status', ['draft', 'running'])

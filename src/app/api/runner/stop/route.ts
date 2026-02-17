@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get run details
-    const { data: run, error: runError } = await supabaseAdmin
+    const { data: run, error: runError } = await getSupabaseAdmin()
       .from('arena_runs')
       .select('*')
       .eq('id', runId)
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Update run status to completed (stopped)
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await getSupabaseAdmin()
       .from('arena_runs')
       .update({ 
         status: 'completed',
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Log the stop action
-    await supabaseAdmin.from('arena_logs').insert({
+    await getSupabaseAdmin().from('arena_logs').insert({
       run_id: runId,
       level: 'info',
       message: 'Simulation manually stopped by admin',
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Get all running simulations
-    const { data: activeRuns, error: fetchError } = await supabaseAdmin
+    const { data: activeRuns, error: fetchError } = await getSupabaseAdmin()
       .from('arena_runs')
       .select('id, status')
       .in('status', ['pending', 'running'])
@@ -97,7 +97,7 @@ export async function DELETE(request: NextRequest) {
     // Stop all active runs
     const runIds = activeRuns.map(run => run.id)
     
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await getSupabaseAdmin()
       .from('arena_runs')
       .update({ 
         status: 'completed',
@@ -112,7 +112,7 @@ export async function DELETE(request: NextRequest) {
     
     // Log the bulk stop action
     for (const runId of runIds) {
-      await supabaseAdmin.from('arena_logs').insert({
+      await getSupabaseAdmin().from('arena_logs').insert({
         run_id: runId,
         level: 'info',
         message: 'Simulation stopped by admin (bulk stop)',

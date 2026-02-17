@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Play, Square, Trophy } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface Competition {
   id: string
@@ -39,7 +39,7 @@ export default function CompetitionsPage() {
 
   const fetchCompetitions = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('arena_competitions')
         .select('*')
         .order('created_at', { ascending: false })
@@ -55,7 +55,7 @@ export default function CompetitionsPage() {
 
   const fetchModels = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('arena_models')
         .select('id, display_name, enabled')
         .eq('enabled', true)
@@ -69,7 +69,7 @@ export default function CompetitionsPage() {
 
   const updateCompetitionStatus = async (competitionId: string, status: string) => {
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('arena_competitions')
         .update({ 
           status,
@@ -246,7 +246,7 @@ function CompetitionForm({ competition, models, onClose, onSave }: {
       
       if (competition) {
         // Update existing competition
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('arena_competitions')
           .update({ 
             ...formData,
@@ -257,7 +257,7 @@ function CompetitionForm({ competition, models, onClose, onSave }: {
         if (error) throw error
       } else {
         // Create new competition
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('arena_competitions')
           .insert([formData])
           .select()
@@ -275,7 +275,7 @@ function CompetitionForm({ competition, models, onClose, onSave }: {
           model_id: modelId
         }))
 
-        const { error: modelsError } = await supabaseAdmin
+        const { error: modelsError } = await supabase
           .from('arena_competition_models')
           .insert(competitionModels)
         

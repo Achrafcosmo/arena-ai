@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { SimulationEngine } from '@/lib/simulation/engine'
 
 export async function POST(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get competition details
-    const { data: competition, error: competitionError } = await supabaseAdmin
+    const { data: competition, error: competitionError } = await getSupabaseAdmin()
       .from('arena_competitions')
       .select('*')
       .eq('id', competitionId)
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get participating models
-    const { data: competitionModels, error: modelsError } = await supabaseAdmin
+    const { data: competitionModels, error: modelsError } = await getSupabaseAdmin()
       .from('arena_competition_models')
       .select(`
         model_id,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Create new run
-    const { data: run, error: runError } = await supabaseAdmin
+    const { data: run, error: runError } = await getSupabaseAdmin()
       .from('arena_runs')
       .insert({
         competition_id: competitionId,
@@ -98,7 +98,7 @@ async function runSimulation(runId: string, competition: any, models: any[]) {
     
     // Initialize model states in database
     for (const model of models) {
-      await supabaseAdmin.from('arena_model_run_state').insert({
+      await getSupabaseAdmin().from('arena_model_run_state').insert({
         run_id: runId,
         model_id: model.id,
         balance: competition.initial_balance,
@@ -118,7 +118,7 @@ async function runSimulation(runId: string, competition: any, models: any[]) {
     // Process each candle
     for (let i = 0; i < totalCandles; i++) {
       // Check if run was stopped
-      const { data: currentRun } = await supabaseAdmin
+      const { data: currentRun } = await getSupabaseAdmin()
         .from('arena_runs')
         .select('status')
         .eq('id', runId)
@@ -147,7 +147,7 @@ async function runSimulation(runId: string, competition: any, models: any[]) {
     console.log(`Simulation ${runId} completed successfully`)
     
     // Log completion
-    await supabaseAdmin.from('arena_logs').insert({
+    await getSupabaseAdmin().from('arena_logs').insert({
       run_id: runId,
       level: 'info',
       message: `Simulation completed successfully. Processed ${totalCandles} candles.`,
@@ -162,7 +162,7 @@ async function runSimulation(runId: string, competition: any, models: any[]) {
     console.error(`Simulation ${runId} failed:`, error)
     
     // Mark run as failed
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('arena_runs')
       .update({ 
         status: 'failed',
@@ -171,7 +171,7 @@ async function runSimulation(runId: string, competition: any, models: any[]) {
       .eq('id', runId)
     
     // Log error
-    await supabaseAdmin.from('arena_logs').insert({
+    await getSupabaseAdmin().from('arena_logs').insert({
       run_id: runId,
       level: 'error',
       message: `Simulation failed: ${String(error)}`,

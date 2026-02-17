@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AlertCircle, Info, AlertTriangle, RefreshCw, Filter } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface LogEntry {
   id: string
@@ -50,7 +50,7 @@ export default function LogsPage() {
 
   const fetchLogs = async () => {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('arena_logs')
         .select(`
           *,
@@ -98,7 +98,7 @@ export default function LogsPage() {
     }
 
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('arena_logs')
         .delete()
         .gte('id', '00000000-0000-0000-0000-000000000000')

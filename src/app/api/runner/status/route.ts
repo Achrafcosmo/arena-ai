@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get run details
-    const { data: run, error: runError } = await supabaseAdmin
+    const { data: run, error: runError } = await getSupabaseAdmin()
       .from('arena_runs')
       .select(`
         *,
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get model states
-    const { data: modelStates, error: statesError } = await supabaseAdmin
+    const { data: modelStates, error: statesError } = await getSupabaseAdmin()
       .from('arena_model_run_state')
       .select(`
         *,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get recent logs
-    const { data: logs, error: logsError } = await supabaseAdmin
+    const { data: logs, error: logsError } = await getSupabaseAdmin()
       .from('arena_logs')
       .select('*')
       .eq('run_id', runId)
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get all active runs status
-    const { data: activeRuns, error } = await supabaseAdmin
+    const { data: activeRuns, error } = await getSupabaseAdmin()
       .from('arena_runs')
       .select(`
         *,
