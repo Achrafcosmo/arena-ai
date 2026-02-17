@@ -318,7 +318,19 @@ export default function DemoPage() {
 
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={420}>
-                    <LineChart data={chartData} margin={{ top: 5, right: 120, bottom: 5, left: 10 }}>
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 5, right: 120, bottom: 5, left: 10 }}
+                      onClick={(e: any) => {
+                        if (e?.activePayload?.[0]?.dataKey) {
+                          const clickedModel = e.activePayload[0].dataKey as string
+                          if (clickedModel !== 'candle') {
+                            setFocusedChartModel(prev => prev === clickedModel ? null : clickedModel)
+                          }
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="#1a1a24" />
                       <XAxis dataKey="candle" stroke="#555" tick={{ fontSize: 10 }} />
                       <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => chartMode === '%' ? `${v.toFixed(1)}%` : `$${v.toLocaleString()}`} />
@@ -326,11 +338,13 @@ export default function DemoPage() {
                         contentStyle={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
                         labelFormatter={v => `Candle ${v}`}
                         formatter={(value: number | undefined, name: string | undefined) => {
+                          if (focusedChartModel && name !== focusedChartModel) return [null, null]
                           const mod = modelMap[name || '']
                           const label = mod?.display_name || name || ''
                           const v = value ?? 0
                           return [chartMode === '%' ? `${v.toFixed(2)}%` : fmtUsd(v), label]
                         }}
+                        itemSorter={(item: any) => -(item.value || 0)}
                       />
                       {chartMode === '%' && <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />}
                       {chartModelIds
@@ -344,6 +358,7 @@ export default function DemoPage() {
                           dot={false}
                           strokeWidth={focusedChartModel ? 3 : 2}
                           name={mid}
+                          activeDot={{ r: 5, cursor: 'pointer', onClick: () => setFocusedChartModel(prev => prev === mid ? null : mid) }}
                         />
                       ))}
                     </LineChart>
