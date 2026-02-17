@@ -322,12 +322,23 @@ export default function DemoPage() {
                       data={chartData}
                       margin={{ top: 5, right: 120, bottom: 5, left: 10 }}
                       onClick={(e: any) => {
-                        if (e?.activePayload?.[0]?.dataKey) {
-                          const clickedModel = e.activePayload[0].dataKey as string
-                          if (clickedModel !== 'candle') {
-                            setFocusedChartModel(prev => prev === clickedModel ? null : clickedModel)
-                          }
-                        }
+                        if (!e?.activePayload?.length || !e?.chartY) return
+                        const items = e.activePayload.filter((p: any) => p.dataKey !== 'candle')
+                        if (!items.length) return
+                        const allVals = items.map((p: any) => p.value ?? 0)
+                        const minVal = Math.min(...allVals)
+                        const maxVal = Math.max(...allVals)
+                        const chartHeight = 410
+                        const ratio = Math.max(0, Math.min(1, (e.chartY - 5) / chartHeight))
+                        const targetVal = maxVal - ratio * (maxVal - minVal)
+                        let closest = items[0]
+                        let closestDist = Infinity
+                        items.forEach((item: any) => {
+                          const dist = Math.abs((item.value ?? 0) - targetVal)
+                          if (dist < closestDist) { closestDist = dist; closest = item }
+                        })
+                        const mid = closest.dataKey as string
+                        setFocusedChartModel(prev => prev === mid ? null : mid)
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -337,16 +348,45 @@ export default function DemoPage() {
                       <Tooltip
                         contentStyle={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
                         labelFormatter={v => `Candle ${v}`}
-                        content={({ active, payload, label }: any) => {
+                        content={({ active, payload, label, coordinate }: any) => {
                           if (!active || !payload?.length) return null
-                          // Find the model closest to cursor (highest value as proxy, or just pick first if focused)
                           const items = focusedChartModel
                             ? payload.filter((p: any) => p.dataKey === focusedChartModel)
                             : payload
                           if (!items.length) return null
-                          // Sort by value desc and show only top 1 when not focused (nearest line)
-                          const sorted = [...items].sort((a: any, b: any) => (b.value || 0) - (a.value || 0))
-                          const show = focusedChartModel ? sorted : [sorted[0]]
+
+                          let show: any[]
+                          if (focusedChartModel) {
+                            show = items
+                          } else {
+                            // Find closest line to mouse Y using chart coordinate
+                            const mouseY = coordinate?.y
+                            if (mouseY != null) {
+                              // Each payload item has a value; we need to find whose rendered Y is closest
+                              // Recharts doesn't expose pixel Y per item, so we approximate:
+                              // pick the item whose value is closest to the value at mouseY
+                              // We can get the Y-axis domain from all values
+                              const allVals = items.map((p: any) => p.value ?? 0)
+                              const minVal = Math.min(...allVals)
+                              const maxVal = Math.max(...allVals)
+                              // Chart area is ~420px, top=5 bottom=5 so usable ~410
+                              // mouseY is relative to chart area; top = maxVal, bottom = minVal
+                              const chartHeight = 410
+                              const ratio = Math.max(0, Math.min(1, (mouseY - 5) / chartHeight))
+                              const targetVal = maxVal - ratio * (maxVal - minVal)
+                              // Find closest
+                              let closest = items[0]
+                              let closestDist = Infinity
+                              items.forEach((item: any) => {
+                                const dist = Math.abs((item.value ?? 0) - targetVal)
+                                if (dist < closestDist) { closestDist = dist; closest = item }
+                              })
+                              show = [closest]
+                            } else {
+                              show = [items[0]]
+                            }
+                          }
+
                           return (
                             <div style={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
                               <div style={{ color: '#999', marginBottom: 4 }}>Candle {label}</div>
