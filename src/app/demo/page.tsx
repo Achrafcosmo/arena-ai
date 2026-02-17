@@ -331,9 +331,9 @@ export default function DemoPage() {
                   </div>
                 </div>
 
-                {/* Chart area — light background like nof1.ai */}
+                {/* Chart area */}
                 {chartData.length > 0 ? (
-                  <div className="relative bg-[#fafafa]">
+                  <div className="relative bg-[#0d0d14]">
                     <ResponsiveContainer width="100%" height={500}>
                       <LineChart
                         data={chartData}
@@ -359,18 +359,18 @@ export default function DemoPage() {
                         }}
                         style={{ cursor: 'pointer' }}
                       >
-                        <CartesianGrid vertical={true} horizontal={true} stroke="#e0e0e0" strokeDasharray="" />
+                        <CartesianGrid vertical={true} horizontal={true} stroke="#1f1f2e" strokeDasharray="" />
                         <XAxis
                           dataKey="candle"
-                          stroke="#bbb"
-                          tick={{ fontSize: 11, fill: '#888' }}
-                          axisLine={{ stroke: '#ccc' }}
-                          tickLine={{ stroke: '#ccc' }}
+                          stroke="#333"
+                          tick={{ fontSize: 11, fill: '#555' }}
+                          axisLine={{ stroke: '#2a2a3a' }}
+                          tickLine={{ stroke: '#2a2a3a' }}
                         />
                         <YAxis
-                          stroke="#bbb"
-                          tick={{ fontSize: 11, fill: '#666', fontFamily: 'monospace' }}
-                          axisLine={{ stroke: '#ccc' }}
+                          stroke="#333"
+                          tick={{ fontSize: 11, fill: '#555', fontFamily: 'monospace' }}
+                          axisLine={{ stroke: '#2a2a3a' }}
                           tickLine={false}
                           tickFormatter={v => chartMode === '%' ? `${v.toFixed(1)}%` : `$${v.toLocaleString()}`}
                         />
@@ -404,8 +404,8 @@ export default function DemoPage() {
                               }
                             }
                             return (
-                              <div style={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4, padding: '6px 10px', fontSize: 12, fontFamily: 'monospace', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                                <div style={{ color: '#999', marginBottom: 2, fontSize: 10 }}>Candle {label}</div>
+                              <div style={{ backgroundColor: '#111118ee', border: '1px solid #333', borderRadius: 4, padding: '6px 10px', fontSize: 12, fontFamily: 'monospace', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                                <div style={{ color: '#666', marginBottom: 2, fontSize: 10 }}>Candle {label}</div>
                                 {show.map((item: any) => {
                                   const mod = modelMap[item.dataKey]
                                   const v = item.value ?? 0
@@ -419,7 +419,7 @@ export default function DemoPage() {
                             )
                           }}
                         />
-                        {chartMode === '%' && <ReferenceLine y={0} stroke="#aaa" strokeDasharray="4 4" />}
+                        {chartMode === '%' && <ReferenceLine y={0} stroke="#444" strokeDasharray="4 4" />}
                         {chartModelIds
                           .filter(mid => !focusedChartModel || focusedChartModel === mid)
                           .map(mid => {
@@ -490,7 +490,7 @@ export default function DemoPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-[500px] bg-[#fafafa] flex items-center justify-center text-gray-400 font-mono">No equity data yet</div>
+                  <div className="h-[500px] bg-[#0d0d14] flex items-center justify-center text-gray-500 font-mono">No equity data yet</div>
                 )}
 
                 {/* Legend row — dark bottom bar */}
@@ -779,7 +779,7 @@ function ModelModal({ modelId, model, equitySnaps, initialBalance, onClose }: {
               <CartesianGrid strokeDasharray="3 3" stroke="#1a1a24" />
               <XAxis dataKey="candle" stroke="#555" tick={{ fontSize: 10 }} />
               <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `$${v.toLocaleString()}`} />
-              <ReferenceLine y={initialBalance} stroke="#555" strokeDasharray="5 5" label={{ value: 'Initial', fill: '#666', fontSize: 10 }} />
+              <ReferenceLine y={initialBalance} stroke="#555" strokeDasharray="5 5" label={{ value: 'Initial', fill: '#555', fontSize: 10 }} />
               <Tooltip contentStyle={{ backgroundColor: '#111118', border: '1px solid #333', borderRadius: 8, fontSize: 12 }} formatter={(v) => [`$${(v as number).toLocaleString()}`, 'Equity']} />
               <Area type="monotone" dataKey="above" fill="#10b981" fillOpacity={0.15} stroke="none" baseValue={initialBalance} />
               <Area type="monotone" dataKey="below" fill="#ef4444" fillOpacity={0.15} stroke="none" baseValue={initialBalance} />
